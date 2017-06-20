@@ -49,7 +49,7 @@ images:
     url: http://download.cirros-cloud.net/0.3.4/cirros-0.3.4-x86_64-disk.img
 
 # DNS Server to add
-dns_server: 8.8.8.8
+dns_server: 10.11.5.19
 
 # Disables dns lookup by overcloud sshd process
 disable_ssh_dns: false
@@ -78,9 +78,9 @@ collectd_controller: true
 collectd_blockstorage: true
 collectd_objectstorage: true
 collectd_cephstorage: true
-collectd_compute: false
+collectd_compute: true
 
-# Opt-In Collectd plugins configuration:
+# Collect plugins configuration:
 ########################
 # Apache plugin
 ########################
@@ -92,14 +92,6 @@ apache_controller_collectd_plugin: false
 apache_controller_mod_status_port: 5001
 
 ########################
-# Apache request time
-########################
-# Setups up Apache to log request time and collectd to grab request time from
-# httpd log files.  This provides request times from Apache for Keystone,
-# Gnocchi, and Nova Placement APIs hosted under httpd.
-apache_controller_collectd_request_time: false
-
-########################
 # Ceph plugin
 ########################
 # Overcloud Controller
@@ -107,17 +99,18 @@ ceph_controller_collectd_plugin: false
 ceph_storage_collectd_plugin: false
 
 ########################
-# Gnocchi Status plugin
+# Gnocchi backlog plugin
 ########################
-gnocchi_status_undercloud_collectd_plugin: false
-gnocchi_status_undercloud_collectd_interval: 10
-gnocchi_status_controller_collectd_plugin: false
-gnocchi_status_controller_collectd_interval: 10
+# This should only be enabled on a single controller when monitoring Gnocchi for
+# performance/scale. This plugin does create a token each interval and adds load
+# to Gnocchi-api each time it polls for measurements and thus your cloud will pay
+# a monitoring "tax" by enabling this plugin.
+gnocchi_status_python_plugin: false
+gnocchi_status_interval: 30
 
 ########################
-# Keystone token count
+# Keystone token count via dbi plugin
 ########################
-# If you have UUID tokens, we can count those via the collectd dbi plugin
 keystone_undercloud_collectd_plugin: false
 keystone_overcloud_collectd_plugin: false
 
@@ -133,23 +126,11 @@ rabbitmq_controller_collectd_interval: 10
 undercloud_monitored_queues:
   - "metering.sample"
   - "event.sample"
-  - "notifications.sample"
-  - "notifications.audit"
-  - "notifications.info"
-  - "notifications.warn"
-  - "notifications.error"
-  - "notifications.critical"
 
 # Queues to monitor message count on Controllers
 controller_monitored_queues:
   - "metering.sample"
   - "event.sample"
-  - "notifications.sample"
-  - "notifications.audit"
-  - "notifications.info"
-  - "notifications.warn"
-  - "notifications.error"
-  - "notifications.critical"
 
 ########################
 # tail plugin
@@ -157,7 +138,6 @@ controller_monitored_queues:
 # Determines if WARN/INFO messages are also counted
 regex_warn: false
 regex_info: false
-
 
 ########################################
 # Docker related
@@ -177,10 +157,10 @@ grafana_docker_image: grafana/grafana:2.6.0
 ########################################
 # Graphite Server ip address (Collectd -> Graphite server)
 # you must fill out graphite_host prior to playbook execution
-graphite_host:
+graphite_host: 10.12.21.1
 graphite_port: 80
 # Graphite prefix / Cloud name used both with graphite and grafana dashboards
-graphite_prefix: openstack
+graphite_prefix: jianzhu-cloud
 # Graphite username and password for login on the dashboard
 # credential aren't created when you deploy graphite, use manage.py
 graphite_username: root
@@ -201,10 +181,10 @@ forbidden_cloud_names:
 # (if you're using the grafana-docker playbook this does not currently work,
 # it will deploy with admin/admin). If you're uploading dashboards be sure to
 # set the password here to whatever it actually is.
-grafana_host:
+grafana_host: 10.12.21.1
 grafana_port: 3000
 grafana_username: admin
-grafana_password: admin
+grafana_password: 100yard-
 # Batch number of hosts per row for all-{cpu, memory, disk, network} openstack dashboards
 dashboards_batch: 20
 # For use with all-{cpu, memory, disk, network} openstack dashboards, uses the graphite prefix to create dashboards for specific openstack cloud
