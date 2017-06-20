@@ -22,6 +22,7 @@
   roles:
     - { role: common, when: collectd_undercloud }
     - { role: epel, when: collectd_undercloud }
+    - { role: repo }
     - { role: collectd-openstack, when: collectd_undercloud }
   tasks:
     - name: Collectd off if not collectd_undercloud
@@ -30,6 +31,7 @@
       when: not collectd_undercloud
       ignore_errors: true
   tags: undercloud
+  environment: "{{proxy_env}}"
 
 - hosts: controller
   remote_user: "{{ host_remote_user }}"
@@ -38,7 +40,7 @@
   roles:
     - { role: common, when: collectd_controller }
     - { role: epel, when: collectd_controller }
-    - { role: repo, when: keystone_overcloud_collectd_plugin }
+    - { role: repo }
     - { role: collectd-openstack, when: collectd_controller }
   tasks:
     - name: Collectd off if not collectd_controller
@@ -47,6 +49,7 @@
       when: not collectd_controller
       ignore_errors: true
   tags: controller
+  environment: "{{proxy_env}}"
 
 - hosts: blockstorage
   remote_user: "{{ host_remote_user }}"
@@ -55,6 +58,7 @@
   roles:
     - { role: common, when: collectd_blockstorage }
     - { role: epel, when: collectd_blockstorage }
+    - { role: repo }
     - { role: collectd-openstack, when: collectd_blockstorage }
   tasks:
     - name: Collectd off if not collectd_blockstorage
@@ -63,6 +67,7 @@
       when: not collectd_blockstorage
       ignore_errors: true
   tags: blockstorage
+  environment: "{{proxy_env}}"
 
 - hosts: objectstorage
   remote_user: "{{ host_remote_user }}"
@@ -71,6 +76,7 @@
   roles:
     - { role: common, when: collectd_objectstorage }
     - { role: epel, when: collectd_objectstorage }
+    - { role: repo }
     - { role: collectd-openstack, when: collectd_objectstorage }
   tasks:
     - name: Collectd off if not collectd_objectstorage
@@ -79,6 +85,7 @@
       when: not collectd_objectstorage
       ignore_errors: true
   tags: objectstorage
+  environment: "{{proxy_env}}"
 
 - hosts: cephstorage
   remote_user: "{{ host_remote_user }}"
@@ -87,6 +94,7 @@
   roles:
     - { role: common, when: collectd_cephstorage }
     - { role: epel, when: collectd_cephstorage }
+    - { role: repo }
     - { role: collectd-openstack, when: collectd_cephstorage }
   tasks:
     - name: Collectd off if not collectd_cephstorage
@@ -95,6 +103,7 @@
       when: not collectd_cephstorage
       ignore_errors: true
   tags: cephstorage
+  environment: "{{proxy_env}}"
 
 - hosts: compute
   remote_user: "{{ host_remote_user }}"
@@ -103,6 +112,7 @@
   roles:
     - { role: common, when: collectd_compute }
     - { role: epel, when: collectd_compute }
+    - { role: repo }
     - { role: collectd-openstack, when: collectd_compute }
   tasks:
     - name: Collectd off if not collectd_compute
@@ -111,3 +121,4 @@
       when: not collectd_compute
       ignore_errors: true
   tags: compute
+  environment: "{{proxy_env}}"

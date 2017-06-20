@@ -1,10 +1,11 @@
 ---
 #
-# Playbook to install grafana
+# Playbook to install Grafana
 #
 
 - hosts: grafana
   remote_user: root
   roles:
-    - { role: epel    }
-    - { role: grafana }
+    - epel
+    - grafana
+  environment: "{{proxy_env}}"

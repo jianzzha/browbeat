@@ -85,7 +85,7 @@ class BrowbeatPlugin(neutron_utils.NeutronScenario,
         bash_env["pmd_dpdk2"] = pmd_dpdk2
         bash_env["routing"] = routing
         bash_env["enable_multi_queue"] = enable_multi_queue
-        bash_env["run_pbench_trafficgen'] = run_pbench_trafficgen
+        bash_env["run_pbench_trafficgen"] = run_pbench_trafficgen
 
         proc = subprocess.Popen(bash_script, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True, env=bash_env)
         out, err = proc.communicate()

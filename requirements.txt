@@ -1,4 +1,7 @@
 ansible==2.2.0.0
+elasticsearch
 python-dateutil==2.4.2
+python-openstackclient==3.11.0
 pykwalify
 elasticsearch
+openstacksdk

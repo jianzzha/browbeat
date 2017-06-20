@@ -26,6 +26,14 @@
   roles:
     - browbeat/common
     - browbeat/browbeat
+    - browbeat/browbeat-results
+    - browbeat/firewall
+    - browbeat/perfkitbenchmarker
+    - browbeat/rally
+    - browbeat/shaker
+    - browbeat/yoda
+    - browbeat/flavors
+    - browbeat/images
     - browbeat/browbeat-network
     - browbeat/template-configs
     - browbeat/statsd-ironic
@@ -52,6 +60,4 @@
 - name: Run Browbeat
   hosts: undercloud
   roles:
-    - browbeat/bug-check
-    - browbeat/grafana-dashboard-setup
     - browbeat/browbeat-run
