@@ -1,0 +1,28 @@
+---
+#
+## Browbeat's NFV Install
+##
+#
+- name: Create nfv directory 
+  git: 
+    repo={{nfv_git_url}}
+    dest={{nfv_dir}}
+
+- name: fixup overcloudrc in nfv_test.cfg file
+  lineinfile:
+    path: "{{nfv_dir}}/nfv_test.cfg"
+    regexp: '^overcloudrc'
+    line: "overcloudrc={{overcloudrc}}"
+
+- name: fixup stackrc in nfv_test.cfg  
+  lineinfile:
+    path: "{{nfv_dir}}/nfv_test.cfg"
+    regexp: '^stackrc'
+    line: "stackrc={{home_dir}}/stackrc"
+- name: fixup nfv_tmp_dir in nfv_test.cfg
+  lineinfile:
+    path: "{{nfv_dir}}/nfv_test.cfg"
+    regexp: '^nfv_tmp_dir'
+    line: "nfv_tmp_dir={{nfv_dir}}/tmp"
+
+

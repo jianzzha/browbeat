@@ -16,6 +16,7 @@ import lib.PerfKit
 import lib.Rally
 import lib.Shaker
 import lib.Yoda
+import lib.NFV
 import lib.WorkloadBase
 import lib.Tools
 import argparse
@@ -25,7 +26,7 @@ import time
 import datetime
 import os
 
-_workload_opts = ['perfkit', 'rally', 'shaker', 'yoda']
+_workload_opts = ['perfkit', 'rally', 'shaker', 'yoda', 'nfv']
 _config_file = 'browbeat-config.yaml'
 debug_log_file = 'log/debug.log'
 

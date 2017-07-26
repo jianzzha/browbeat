@@ -5,7 +5,7 @@ browbeat:
   cloud_name: openstack
 elasticsearch:
   enabled: false 
-  host: 1.1.1.1
+  host: 10.12.68.61 
   port: 9200
   regather: true
   metadata_files:
@@ -32,7 +32,7 @@ connmon:
   sudo: true
 grafana:
   enabled: false 
-  grafana_ip: 1.1.1.1
+  grafana_ip: 10.12.21.1 
   grafana_port: 3000
   dashboards:
     - openstack-general-system-performance
@@ -92,7 +92,7 @@ shaker:
       time: 60
       file: lib/python2.7/site-packages/shaker/scenarios/openstack/dense_l3_east_west.yaml
 rally:
-  enabled: true
+  enabled: false 
   sleep_before: 5
   sleep_after: 5
   venv: /home/stack/rally-venv/bin/activate
@@ -102,8 +102,6 @@ rally:
     - subnet-router-create: rally/rally-plugins/subnet-router-create
     - glance-create-boot-delete: rally/rally-plugins/glance-create-boot-delete
     - nova-create-pbench-uperf: rally/rally-plugins/nova-create-pbench-uperf
-    - neutron-securitygroup-port: rally/rally-plugins/neutron-securitygroup-port
-    - nfv: rally/rally-plugins/nfv
   benchmarks:
     - name: authenticate
       enabled: false
@@ -281,25 +279,31 @@ rally:
           send_results: True
           test_name: "browbeat-rally"
           file: rally/rally-plugins/nova-create-pbench-uperf/nova-create-pbench-uperf.yml
-        - name: nfv
-          enabled: true 
-          instances: 1
-          traffic_gen_src_slot:
-          traffic_gen_dst_slot:
-          traffic_loss_pct:
-          data_vlan_start:
-          repin_ovs_nonpmd:
-          repin_ovs_pmd:
-          repin_kvm_emulator:
-          pmd_vm_eth0: 1
-          pmd_vm_eth1: 2
-          pmd_vm_eth2: 4
-          pmd_dpdk0: 26
-          pmd_dpdk1: 28
-          pmd_dpdk2: 3
-          routing: {{routing}}
-          enable_multi_queue: {{enable_multi_queue}}
-          dns_server: 10.35.28.28 
-          file: rally/rally-plugins/nfv/nfv.yml
+nfv:
+  enabled: true 
+  sleep_before: 0
+  sleep_after: 0
+  dir: /home/stack/nfv-scripts
+  benchmarks:
+    - name: dpdk-testpmd 
+      enabled: true 
+      instances: 1
+      run_traffic_gen: "no" 
+      pbench_report_prefix: "browbeat-nfv"
+      traffic_gen_src_slot: "01:00.0"
+      traffic_gen_dst_slot: "01:00.1"
+      traffic_loss_pct: 0.002
+      data_vlan_start: 100
+      repin_ovs_nonpmd: false
+      repin_ovs_pmd: false
+      repin_kvm_emulator: true
+      pmd_vm_eth0: 1
+      pmd_vm_eth1: 2
+      pmd_vm_eth2: 4
+      pmd_dpdk0: 26
+      pmd_dpdk1: 28
+      pmd_dpdk2: 3
+      routing: "testpmd-sriov" 
+      enable_multi_queue: false 
           
 

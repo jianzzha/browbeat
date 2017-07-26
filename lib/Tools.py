@@ -14,6 +14,7 @@ import PerfKit
 import Rally
 import Shaker
 import Yoda
+import NFV
 import logging
 import os
 import subprocess
@@ -128,6 +129,9 @@ class Tools(object):
         elif provider == "yoda":
             yoda = Yoda.Yoda(self.config)
             yoda.start_workloads()
+        elif provider == "nfv":
+            nfv = NFV.NFV(self.config)
+            nfv.start_workloads()
         else:
             self.logger.error("Unknown workload provider: {}".format(provider))
 
