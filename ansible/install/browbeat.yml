@@ -22,6 +22,7 @@
     - yoda
     - flavors
     - images
+    - nfv
   environment: "{{proxy_env}}"
 
 - hosts: compute

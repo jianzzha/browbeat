@@ -287,8 +287,9 @@ nfv:
   benchmarks:
     - name: dpdk-testpmd 
       enabled: true 
-      instances: 1
-      run_traffic_gen: "no" 
+      num_vm: 1
+      run_traffic_gen: true 
+      run_pbench: true 
       pbench_report_prefix: "browbeat-nfv"
       traffic_gen_src_slot: "01:00.0"
       traffic_gen_dst_slot: "01:00.1"

@@ -2,7 +2,39 @@
 #
 ## Browbeat's NFV Install
 ##
-#
+
+# this playbook will reboot the target machine, can't run it if playbook is executed from localhost
+- fail:
+    msg: "system need reboot but this playbook is running from localhosti, please rerun from a remote machine"
+    when: {{inventory_hostname}} == "localhost"
+
+- name: pbench internal repo
+  shell: |
+    sudo wget -O /etc/yum.repos.d/pbench-internal.repo "{{ pbench_internal_url }}"
+- name: pbench external repo
+  copy:
+    src: files/pbench-external.repo
+    dest: /etc/yum.repos.d/pbench-external.repo
+    owner: root
+    group: root
+- name: install optional repo
+  copy: 
+    src: files/rhel-optional.repo
+    dest: /etc/yum.repos.d/rhel-optional.repo
+    owner: root
+    group: root
+- name: install pbench
+  yum: name={{ item }}
+  with_items:
+    - pbench-agent
+    - pbench-agent-internal
+    - pbench-sysstat
+
+- name: copy pbench-trafficgen files
+  shell: |
+    wget -O /opt/pbench-agent/bench-scripts/pbench-trafficgen https://github.com/atheurer/pbench/blob/trafficgen/agent/bench-scripts/pbench-trafficgen
+    wget -O /opt/pbench-agent/bench-scripts/postprocess/trafficgen-postprocess  https://github.com/atheurer/pbench/blob/trafficgen/agent/bench-scripts/postprocess/trafficgen-postprocess
+
 - name: Create nfv directory 
   git: 
     repo={{nfv_git_url}}
@@ -25,4 +57,85 @@
     regexp: '^nfv_tmp_dir'
     line: "nfv_tmp_dir={{nfv_dir}}/tmp"
 
+- name: Deploy VM access vlan interface
+  template:
+    src: templates/ifcfg-vm-access.j2
+    dest: "/etc/sysconfig/network-scripts/ifcfg-{{vm_access_device}}"
+    owner: root
+    group: root
+- name: Turn on vm access vlan interface
+  shell: ifup {{vm_access_device}}
 
+- name: Deploy Private external vlan interface
+  template:
+    src: templates/ifcfg-vlan.j2
+    dest: "/etc/sysconfig/network-scripts/ifcfg-{{external_vlan_device}}"
+    owner: root
+    group: root
+- name: Turn on Private external vlan interface
+  shell: ifup {{external_vlan_device}}
+
+- name: check SNAT entry
+  shell: iptables -t nat -L POSTROUTING | egrep "MASQUERADE.*anywhere.*anywhere"
+  register: testsnat
+  failed_when: testsnat.stderr != ""
+
+- name: setup snat for VM if not done
+  shell: |
+    echo 1 > /proc/sys/net/ipv4/ip_forward
+    oif=$(ip route | grep default | awk '{print $5}')
+    iptables -t nat -A POSTROUTING -o $oif -j MASQUERADE
+    /sbin/service iptables save
+  when: testsnat.rc == 1
+
+- name: install rhelosp-rhel-7-fast-datapth.repo
+  copy: src=files/rhelosp-rhel-7-fast-datapth.repo dest=/etc/yum.repos.d/rhelosp-rhel-7-fast-datapth.repo owner=root group=root mode=0644
+
+- name: update tuned and isolcpu boot parameter
+  shell: |
+    yum install -y dpdk
+    yum install -y dpdk-tools
+    yum -y install libhugetlbfs-utils
+    hugeadm --create-global-mounts
+    yum remove -y tuned
+    yum install -y tuned
+    yum install -y tuned-profiles-cpu-partitioning
+    nic1_numa=$(cat /sys/class/net/{{trafficgen_nic1}}/device/numa_node)
+    if [[ ${nic1_numa} -eq 0 ]]; then
+      core1=2
+    else
+      core1=1
+    fi
+    nic2_numa=$(cat /sys/class/net/{{trafficgen_nic2}}/device/numa_node)
+    if [[ ${nic2_numa} -eq 0 ]]; then
+      core2=4
+    else
+      core2=3
+    fi
+    grubby --update-kernel=`grubby --default-kernel` --args="default_hugepagesz=1G hugepagesz=1G hugepages=8 isolcpus=$core1,$core2 intel_iommu=on iommu=pt"
+    sed -i -r '^isolated_cores/d' /etc/tuned/cpu-partitioning-variables.conf
+    echo isolated_cores=$core1,$core2 >> /etc/tuned/cpu-partitioning-variables.conf
+    tuned-adm profile cpu-partitioning
+
+- name: Reboot machine
+  shell: "nohup sh -c '( sleep 5 ; shutdown -r now )' &"
+  async: 0
+  poll: 0
+  ignore_errors: true
+
+# 8 minute timeout
+- name: Wait for Machine Ready
+  local_action:
+    module: wait_for
+    host: "{{inventory_hostname}}"
+    port: 22
+    delay: 60
+    timeout: 480
+
+# after reboot, traffic-gen ports become kernel ports, get the pci-slot from the int name
+- name: Get traffic-gen port bus info
+  shell: |
+    traffic_gen_src_slot=$(ethtool -i {{trafficgen_nic1}} | grep "bus-info:" | awk '{print $2}')
+    traffic_gen_dst_slot=$(ethtool -i {{trafficgen_nic2}} | grep "bus-info:" | awk '{print $2}')
+    sed -i -r "s/^traffic_gen_src_slot=.*/traffic_gen_src_slot=${traffic_gen_src_slot}/" {{nfv_dir}}/nfv_test.cfg
+    sed -i -r "s/^traffic_gen_dst_slot=.*/traffic_gen_dst_slot=${traffic_gen_dst_slot}/" {{nfv_dir}}/nfv_test.cfg
