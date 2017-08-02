@@ -119,7 +119,7 @@ class NFV(WorkloadBase.WorkloadBase):
                 "File missing: {}/nfv.stdout.log".format(result_dir))
 
         # Copy all results
-        for nfv_result_dir in glob.glob("/var/lib/pbench-agent/{}*".format(benchmark_config['pbench_report_prefix'])):
+        for nfv_result_dir in glob.glob("/var/lib/pbench-agent/trafficgen_{}*".format(benchmark_config['pbench_report_prefix'])):
             shutil.copy("{}/result.json".format(nfv_result_dir), result_dir)
             shutil.copy("{}/pbench-trafficgen.cmd".format(nfv_result_dir), result_dir)
             subprocess.call(["/usr/bin/sudo", "rm", "-rf", nfv_result_dir])
@@ -154,6 +154,7 @@ class NFV(WorkloadBase.WorkloadBase):
         if sucessful_run:
             nfv_results = self.elastic.load_json_file(
                                         '{}/result.json'.format(result_dir))
+                            
             for iteration in nfv_results:
                 complete_result_json = {'browbeat_scenario': benchmark_config}
                 complete_result_json['browbeat_rerun'] = browbeat_rerun
@@ -161,10 +162,13 @@ class NFV(WorkloadBase.WorkloadBase):
                 complete_result_json['grafana_url'] = self.grafana.grafana_urls()
                 complete_result_json['nfv_setup'] = iteration["iteration_data"]["parameters"]["benchmark"]
                 complete_result_json["throughput"] = iteration["iteration_data"]["throughput"]
-                
-                result = self.elastic.combine_metadata(complete_result_json)
+        
+                if self.config['nfv']['enable_browbeat_metadata']:
+                    result = self.elastic.combine_metadata(complete_result_json)
+                else:
+                    result = complete_result_json
                 if not self.elastic.index_result(result, test_name, result_dir,
-                                                 str(result_count), 'result'):
+                                                 _type='result'):
                     index_success = False
                     self.update_index_failures()
         else:
@@ -173,7 +177,10 @@ class NFV(WorkloadBase.WorkloadBase):
             complete_result_json['browbeat_rerun'] = browbeat_rerun
             complete_result_json['timestamp'] = str(es_ts).replace(" ", "T")
             complete_result_json['grafana_url'] = self.grafana.grafana_urls()
-            result = self.elastic.combine_metadata(complete_result_json)
+            if self.config['nfv']['enable_browbeat_metadata']:
+                result = self.elastic.combine_metadata(complete_result_json)
+            else:
+                result = complete_result_json
             index_success = self.elastic.index_result(result, test_name, result_dir, _type='error')
         return index_success
 
