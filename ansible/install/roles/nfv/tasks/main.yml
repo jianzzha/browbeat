@@ -6,11 +6,21 @@
 # this playbook will reboot the target machine, can't run it if playbook is executed from localhost
 - fail:
     msg: "system need reboot but this playbook is running from localhosti, please rerun from a remote machine"
-    when: {{inventory_hostname}} == "localhost"
+  when: inventory_hostname == "localhost"
 
 - name: pbench internal repo
   shell: |
     sudo wget -O /etc/yum.repos.d/pbench-internal.repo "{{ pbench_internal_url }}"
+  when: redhat_internal is not defined or not redhat_internal
+
+- name: pbench redhat internal repo
+  copy:
+    src: files/pbench-internal.repo
+    dest: /etc/yum.repos.d/pbench-internal.repo
+    owner: root
+    group: root
+  when: redhat_internal is defined and redhat_internal
+
 - name: pbench external repo
   copy:
     src: files/pbench-external.repo
@@ -35,45 +45,50 @@
     wget -O /opt/pbench-agent/bench-scripts/pbench-trafficgen https://github.com/atheurer/pbench/blob/trafficgen/agent/bench-scripts/pbench-trafficgen
     wget -O /opt/pbench-agent/bench-scripts/postprocess/trafficgen-postprocess  https://github.com/atheurer/pbench/blob/trafficgen/agent/bench-scripts/postprocess/trafficgen-postprocess
 
+- name: remove existing nfv directory to have a fresh start
+  shell: |
+    rm -rf "{{nfv_dir}}" 2>/dev/null
+  ignore_errors: yes
 - name: Create nfv directory 
   git: 
-    repo={{nfv_git_url}}
-    dest={{nfv_dir}}
+    repo: "{{nfv_git_url}}"
+    dest: "{{nfv_dir}}"
+    accept_hostkey: yes
 
 - name: fixup overcloudrc in nfv_test.cfg file
   lineinfile:
-    path: "{{nfv_dir}}/nfv_test.cfg"
+    name: "{{nfv_dir}}/nfv_test.cfg"
     regexp: '^overcloudrc'
     line: "overcloudrc={{overcloudrc}}"
 
 - name: fixup stackrc in nfv_test.cfg  
   lineinfile:
-    path: "{{nfv_dir}}/nfv_test.cfg"
+    name: "{{nfv_dir}}/nfv_test.cfg"
     regexp: '^stackrc'
     line: "stackrc={{home_dir}}/stackrc"
 - name: fixup nfv_tmp_dir in nfv_test.cfg
   lineinfile:
-    path: "{{nfv_dir}}/nfv_test.cfg"
+    name: "{{nfv_dir}}/nfv_test.cfg"
     regexp: '^nfv_tmp_dir'
     line: "nfv_tmp_dir={{nfv_dir}}/tmp"
 
 - name: Deploy VM access vlan interface
   template:
     src: templates/ifcfg-vm-access.j2
-    dest: "/etc/sysconfig/network-scripts/ifcfg-{{vm_access_device}}"
+    dest: "/etc/sysconfig/network-scripts/ifcfg-{{nfv_vm_access_device}}"
     owner: root
     group: root
 - name: Turn on vm access vlan interface
-  shell: ifup {{vm_access_device}}
+  shell: ifup {{nfv_vm_access_device}}
 
 - name: Deploy Private external vlan interface
   template:
     src: templates/ifcfg-vlan.j2
-    dest: "/etc/sysconfig/network-scripts/ifcfg-{{external_vlan_device}}"
+    dest: "/etc/sysconfig/network-scripts/ifcfg-{{nfv_external_vlan_device}}"
     owner: root
     group: root
 - name: Turn on Private external vlan interface
-  shell: ifup {{external_vlan_device}}
+  shell: ifup {{nfv_external_vlan_device}}
 
 - name: check SNAT entry
   shell: iptables -t nat -L POSTROUTING | egrep "MASQUERADE.*anywhere.*anywhere"
