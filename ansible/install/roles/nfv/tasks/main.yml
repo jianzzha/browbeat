@@ -11,7 +11,8 @@
 - name: pbench internal repo
   shell: |
     sudo wget -O /etc/yum.repos.d/pbench-internal.repo "{{ pbench_internal_url }}"
-  when: redhat_internal is not defined or not redhat_internal
+  when: pbench_internal_url is defined
+  become: true
 
 - name: pbench redhat internal repo
   copy:
@@ -19,7 +20,8 @@
     dest: /etc/yum.repos.d/pbench-internal.repo
     owner: root
     group: root
-  when: redhat_internal is defined and redhat_internal
+  when: pbench_internal_url is not defined
+  become: true
 
 - name: pbench external repo
   copy:
@@ -27,23 +29,28 @@
     dest: /etc/yum.repos.d/pbench-external.repo
     owner: root
     group: root
+  become: true
 - name: install optional repo
   copy: 
     src: files/rhel-optional.repo
     dest: /etc/yum.repos.d/rhel-optional.repo
     owner: root
     group: root
+  become: true
+
 - name: install pbench
   yum: name={{ item }}
   with_items:
     - pbench-agent
     - pbench-agent-internal
     - pbench-sysstat
+  become: true
 
 - name: copy pbench-trafficgen files
   shell: |
-    wget -O /opt/pbench-agent/bench-scripts/pbench-trafficgen https://github.com/atheurer/pbench/blob/trafficgen/agent/bench-scripts/pbench-trafficgen
-    wget -O /opt/pbench-agent/bench-scripts/postprocess/trafficgen-postprocess  https://github.com/atheurer/pbench/blob/trafficgen/agent/bench-scripts/postprocess/trafficgen-postprocess
+    wget -O /opt/pbench-agent/bench-scripts/pbench-trafficgen https://raw.githubusercontent.com/atheurer/pbench/trafficgen/agent/bench-scripts/pbench-trafficgen 
+    wget -O /opt/pbench-agent/bench-scripts/postprocess/trafficgen-postprocess https://raw.githubusercontent.com/atheurer/pbench/trafficgen/agent/bench-scripts/postprocess/trafficgen-postprocess 
+  become: true
 
 - name: remove existing nfv directory to have a fresh start
   shell: |
@@ -78,8 +85,11 @@
     dest: "/etc/sysconfig/network-scripts/ifcfg-{{nfv_vm_access_device}}"
     owner: root
     group: root
+  become: true
+
 - name: Turn on vm access vlan interface
   shell: ifup {{nfv_vm_access_device}}
+  become: true
 
 - name: Deploy Private external vlan interface
   template:
@@ -87,13 +97,17 @@
     dest: "/etc/sysconfig/network-scripts/ifcfg-{{nfv_external_vlan_device}}"
     owner: root
     group: root
+  become: true
+
 - name: Turn on Private external vlan interface
   shell: ifup {{nfv_external_vlan_device}}
+  become: true
 
 - name: check SNAT entry
   shell: iptables -t nat -L POSTROUTING | egrep "MASQUERADE.*anywhere.*anywhere"
   register: testsnat
   failed_when: testsnat.stderr != ""
+  become: true
 
 - name: setup snat for VM if not done
   shell: |
@@ -102,9 +116,11 @@
     iptables -t nat -A POSTROUTING -o $oif -j MASQUERADE
     /sbin/service iptables save
   when: testsnat.rc == 1
+  become: true
 
 - name: install rhelosp-rhel-7-fast-datapth.repo
   copy: src=files/rhelosp-rhel-7-fast-datapth.repo dest=/etc/yum.repos.d/rhelosp-rhel-7-fast-datapth.repo owner=root group=root mode=0644
+  become: true
 
 - name: update tuned and isolcpu boot parameter
   shell: |
@@ -131,12 +147,14 @@
     sed -i -r '^isolated_cores/d' /etc/tuned/cpu-partitioning-variables.conf
     echo isolated_cores=$core1,$core2 >> /etc/tuned/cpu-partitioning-variables.conf
     tuned-adm profile cpu-partitioning
+  become: true
 
 - name: Reboot machine
   shell: "nohup sh -c '( sleep 5 ; shutdown -r now )' &"
   async: 0
   poll: 0
   ignore_errors: true
+  become: true
 
 # 8 minute timeout
 - name: Wait for Machine Ready
@@ -154,3 +172,5 @@
     traffic_gen_dst_slot=$(ethtool -i {{trafficgen_nic2}} | grep "bus-info:" | awk '{print $2}')
     sed -i -r "s/^traffic_gen_src_slot=.*/traffic_gen_src_slot=${traffic_gen_src_slot}/" {{nfv_dir}}/nfv_test.cfg
     sed -i -r "s/^traffic_gen_dst_slot=.*/traffic_gen_dst_slot=${traffic_gen_dst_slot}/" {{nfv_dir}}/nfv_test.cfg
+  become: true
+
