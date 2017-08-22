@@ -46,17 +46,18 @@ yoda_venv: /home/stack/yoda-venv
 perfkit_venv: "{{home_dir}}/perfkit-venv"
 perfkit_version: v1.12.0
 
+pbench_internal_url: "http://change/to/your/url"
 # nfv settings
 nfv_dir: "{{home_dir}}/nfv"
-nfv_git_url: git@github.com:jianzzha/nfv-scripts.git
-nfv_external_vlan_device: em4.10
+nfv_git_url: "https://github.com/jianzzha/nfv-scripts.git"
+nfv_external_vlan_device: eno1.10
 nfv_private_external_address: 172.21.0.1
 nfv_private_external_netmask: 255.255.255.0
-nfv_vm_access_device: p2p1.200
+nfv_vm_access_device: eno2.200
 nfv_vm_access_address: 10.1.1.1
 nfv_vm_access_netmask: 255.255.255.0
-trafficgen_nic1: em1
-trafficgen_nic2: em2
+trafficgen_nic1: ens2f0 
+trafficgen_nic2: ens2f1 
 
 
 # Configuration items to adjust browbeat results served through httpd

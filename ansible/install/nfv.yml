@@ -1,0 +1,4 @@
+- hosts: browbeat
+  roles:
+    - nfv
+
