@@ -48,8 +48,10 @@
 
 - name: copy pbench-trafficgen files
   shell: |
-    wget -O /opt/pbench-agent/bench-scripts/pbench-trafficgen https://raw.githubusercontent.com/atheurer/pbench/trafficgen/agent/bench-scripts/pbench-trafficgen 
+    wget -O /opt/pbench-agent/bench-scripts/pbench-trafficgen https://raw.githubusercontent.com/atheurer/pbench/trafficgen/agent/bench-scripts/pbench-trafficgen
+    chmod 777 /opt/pbench-agent/bench-scripts/pbench-trafficgen
     wget -O /opt/pbench-agent/bench-scripts/postprocess/trafficgen-postprocess https://raw.githubusercontent.com/atheurer/pbench/trafficgen/agent/bench-scripts/postprocess/trafficgen-postprocess 
+    chmod 777 /opt/pbench-agent/bench-scripts/postprocess/trafficgen-postprocess
   become: true
 
 - name: remove existing nfv directory to have a fresh start
