@@ -292,10 +292,13 @@ nfv:
       compute_node: "compute-0.localdomain"
       run_traffic_gen: true 
       traffic_gen: "trex-txrx"
+      search_runtime: 5
+      validation_runtime: 10
       provider_network_type: "flat"
       run_pbench: true 
       pbench_report_prefix: "browbeat-nfv-direct"
       data_pkt_size: 64
+      num_flows: 128
       traffic_loss_pct: 0.002
       data_vlan_start: 300
       enable_multi_queue: false
