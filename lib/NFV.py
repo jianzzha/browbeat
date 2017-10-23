@@ -76,7 +76,7 @@ class NFV(WorkloadBase.WorkloadBase):
 
         if 'enabled' in benchmark_config:
             del benchmark_config['enabled']
-        cmd = "{}/prepare.sh".format(self.config['nfv']['dir'])
+        cmd = "{}/run.sh".format(self.config['nfv']['nfv_script_dir'])
         nfv_env = ""
         for parameter, value in benchmark_config.iteritems():
             nfv_env += "{}={} ".format(parameter, value)
@@ -118,7 +118,7 @@ class NFV(WorkloadBase.WorkloadBase):
             self.logger.error(
                 "File missing: {}/nfv.stdout.log".format(result_dir))
 
-        # Copy all results
+        # only copy browbeat test results based on the pbench_report_prefix
         for nfv_result_dir in glob.glob("/var/lib/pbench-agent/trafficgen_{}*".format(benchmark_config['pbench_report_prefix'])):
             shutil.copy("{}/result.json".format(nfv_result_dir), result_dir)
             shutil.copy("{}/pbench-trafficgen.cmd".format(nfv_result_dir), result_dir)

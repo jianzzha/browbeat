@@ -22,7 +22,7 @@
     - yoda
     - flavors
     - images
-    - nfv
+    - { role: nfv, when: nfv_test_on_director }
   environment: "{{proxy_env}}"
 
 - hosts: compute

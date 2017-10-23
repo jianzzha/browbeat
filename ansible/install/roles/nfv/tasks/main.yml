@@ -8,51 +8,13 @@
     msg: "system need reboot but this playbook is running from localhosti, please rerun from a remote machine"
   when: inventory_hostname == "localhost"
 
-- name: pbench internal repo
-  shell: |
-    sudo wget -O /etc/yum.repos.d/pbench-internal.repo "{{ pbench_internal_url }}"
-  when: pbench_internal_url is defined
-  become: true
+- name: check if hyper threading enabled
+  shell: cat /sys/devices/system/cpu/cpu0/topology/thread_siblings_list | grep -q ','
+  register: ht_enabled
 
-- name: pbench redhat internal repo
-  copy:
-    src: files/pbench-internal.repo
-    dest: /etc/yum.repos.d/pbench-internal.repo
-    owner: root
-    group: root
-  when: pbench_internal_url is not defined
-  become: true
-
-- name: pbench external repo
-  copy:
-    src: files/pbench-external.repo
-    dest: /etc/yum.repos.d/pbench-external.repo
-    owner: root
-    group: root
-  become: true
-- name: install optional repo
-  copy: 
-    src: files/rhel-optional.repo
-    dest: /etc/yum.repos.d/rhel-optional.repo
-    owner: root
-    group: root
-  become: true
-
-- name: install pbench
-  yum: name={{ item }}
-  with_items:
-    - pbench-agent
-    - pbench-agent-internal
-    - pbench-sysstat
-  become: true
-
-- name: copy pbench-trafficgen files
-  shell: |
-    wget -O /opt/pbench-agent/bench-scripts/pbench-trafficgen https://raw.githubusercontent.com/atheurer/pbench/trafficgen/agent/bench-scripts/pbench-trafficgen
-    chmod 777 /opt/pbench-agent/bench-scripts/pbench-trafficgen
-    wget -O /opt/pbench-agent/bench-scripts/postprocess/trafficgen-postprocess https://raw.githubusercontent.com/atheurer/pbench/trafficgen/agent/bench-scripts/postprocess/trafficgen-postprocess 
-    chmod 777 /opt/pbench-agent/bench-scripts/postprocess/trafficgen-postprocess
-  become: true
+- fail:
+    msg: "For better performance, trafficgen should not have hyper threading disabled. Please disable hyper threading in BIOS and re-run this script."
+  when: ht_enabled.rc == 0
 
 - name: remove existing nfv directory to have a fresh start
   shell: |
@@ -63,6 +25,12 @@
     repo: "{{nfv_git_url}}"
     dest: "{{nfv_dir}}"
     accept_hostkey: yes
+
+- name: fixup browbeat config file
+  lineinfile:
+    name: "{{browbeat_path}}/browbeat-config.yaml"
+    regexp: '^  nfv_script_dir:'
+    line: "  nfv_script_dir: {{nfv_dir}}"
 
 - name: fixup overcloudrc in nfv_test.cfg file
   lineinfile:
@@ -93,18 +61,6 @@
   shell: ifup {{nfv_vm_access_device}}
   become: true
 
-- name: Deploy Private external vlan interface
-  template:
-    src: templates/ifcfg-vlan.j2
-    dest: "/etc/sysconfig/network-scripts/ifcfg-{{nfv_external_vlan_device}}"
-    owner: root
-    group: root
-  become: true
-
-- name: Turn on Private external vlan interface
-  shell: ifup {{nfv_external_vlan_device}}
-  become: true
-
 - name: check SNAT entry
   shell: iptables -t nat -L POSTROUTING | egrep "MASQUERADE.*anywhere.*anywhere"
   register: testsnat
@@ -133,30 +89,42 @@
     yum remove -y tuned
     yum install -y tuned
     yum install -y tuned-profiles-cpu-partitioning
+    numa0_list=$(lscpu 2>/dev/null | sed -r -n "s/NUMA node0.* [0-9],([0-9\,]+)/\1/p")
+    numa1_list=$(lscpu 2>/dev/null | sed -r -n "s/NUMA node1.* [0-9],([0-9\,]+)/\1/p")
+    if [ -z ${numa0_list+x} ]; then
+      numa0_list=2
+    fi
+    if [ -z ${numa1_list+x} ]; then
+      numa1_list=3
+    fi
     nic1_numa=$(cat /sys/class/net/{{trafficgen_nic1}}/device/numa_node)
-    if [[ ${nic1_numa} -eq 0 ]]; then
-      core1=2
-    else
-      core1=1
-    fi
     nic2_numa=$(cat /sys/class/net/{{trafficgen_nic2}}/device/numa_node)
-    if [[ ${nic2_numa} -eq 0 ]]; then
-      core2=4
+    if (( nic1_numa == 0 )); then
+      clist=$numa0_list
+      olist=$numa1_list
     else
-      core2=3
+      clist=$numa1_list
+      olist=$numa0_list
     fi
-    grubby --update-kernel=`grubby --default-kernel` --args="default_hugepagesz=1G hugepagesz=1G hugepages=8 isolcpus=$core1,$core2 intel_iommu=on iommu=pt"
+    if (( nic2_numa != nic1_numa )); then
+      clist=$clist,$olist
+    fi
+    grubby --update-kernel=`grubby --default-kernel` --args="default_hugepagesz=1G hugepagesz=1G hugepages=16 isolcpus=$clist intel_iommu=on iommu=pt"
     sed -i -r '/^isolated_cores/d' /etc/tuned/cpu-partitioning-variables.conf
-    echo isolated_cores=$core1,$core2 >> /etc/tuned/cpu-partitioning-variables.conf
+    echo isolated_cores=$clist >> /etc/tuned/cpu-partitioning-variables.conf
     tuned-adm profile cpu-partitioning
   become: true
 
+- debug: msg="Manual reboot of the director is necessary. Manully edit traffic_gen_src_slot/traffic_gen_dst_slot in {{nfv_dir}}/nfv_test.cfg." 
+  when: inventory_hostname == "localhost"
+ 
 - name: Reboot machine
   shell: "nohup sh -c '( sleep 5 ; shutdown -r now )' &"
   async: 0
   poll: 0
   ignore_errors: true
   become: true
+  when: inventory_hostname != "localhost"
 
 # 8 minute timeout
 - name: Wait for Machine Ready
@@ -166,6 +134,7 @@
     port: 22
     delay: 60
     timeout: 480
+  when: inventory_hostname != "localhost"
 
 # after reboot, traffic-gen ports become kernel ports, get the pci-slot from the int name
 - name: Get traffic-gen port bus info
@@ -175,4 +144,5 @@
     sed -i -r "s/^traffic_gen_src_slot=.*/traffic_gen_src_slot=${traffic_gen_src_slot}/" {{nfv_dir}}/nfv_test.cfg
     sed -i -r "s/^traffic_gen_dst_slot=.*/traffic_gen_dst_slot=${traffic_gen_dst_slot}/" {{nfv_dir}}/nfv_test.cfg
   become: true
+  when: inventory_hostname != "localhost"
 

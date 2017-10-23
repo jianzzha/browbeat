@@ -1,8 +1,0 @@
-[pbench-internal]
-name=pbench-internal
-baseurl=http://pbench.perf.lab.eng.bos.redhat.com/repo/production/7/
-arch=x86_64
-enabled=1
-gpgcheck=0
-skip_if_unavailable=1
-

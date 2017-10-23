@@ -284,23 +284,23 @@ nfv:
   enable_browbeat_metadata: false 
   sleep_before: 0
   sleep_after: 0
-  dir: /home/stack/nfv-scripts
+  nfv_script_dir: /home/stack/nfv-scripts
   benchmarks:
     - name: dpdk-testpmd 
       enabled: true 
       num_vm: 1
-      compute_node: "compute-2.localdomain"
+      compute_node: "compute-0.localdomain"
       run_traffic_gen: true 
       traffic_gen: "trex-txrx"
-      provider_network_type: "vlan"
+      provider_network_type: "flat"
       run_pbench: true 
-      pbench_report_prefix: "browbeat-nfv"
-      traffic_gen_src_slot: "82:00.0"
-      traffic_gen_dst_slot: "82:00.1"
+      pbench_report_prefix: "browbeat-nfv-direct"
+      data_pkt_size: 64
       traffic_loss_pct: 0.002
       data_vlan_start: 300
+      enable_multi_queue: false
       repin_ovs_nonpmd: false
-      repin_ovs_pmd: false
+      repin_ovs_pmd: true 
       repin_kvm_emulator: true
       pmd_vm_eth0: 1
       pmd_vm_eth1: 2
@@ -309,6 +309,4 @@ nfv:
       pmd_dpdk1: 28
       pmd_dpdk2: 3
       routing: "testpmd" 
-      enable_multi_queue: false 
-          
 
